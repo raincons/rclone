@@ -434,6 +434,14 @@ func (f *Fs) authorize(ctx context.Context, force bool) (err error) {
 		t, err = oauthutil.GetToken(f.name, f.m)
 	}
 
+	if err == nil && !tokenIsValid(t) && t != nil && t.RefreshToken != "" && t.Type() == "Bearer" {
+		fs.Infof(f, "Try to refresh token.")
+		_, ts, err := oauthutil.NewClientWithBaseClient(ctx, f.name, f.m, oauthConfig, f.cli)
+		if err == nil {
+			f.source = oauth2.ReuseTokenSource(nil, ts)
+			t, err = f.source.Token()
+		}
+	}
 	if err != nil || !tokenIsValid(t) {
 		fs.Infof(f, "Valid token not found, authorizing.")
 		ctx := oauthutil.Context(ctx, f.cli)
